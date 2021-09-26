@@ -28,6 +28,12 @@ static realloc_t m_realloc_real = NULL;
 typedef void (*free_t)(void *ptr);
 static free_t m_free_real = NULL;
 
+typedef void *(*mmap_t)(void *addr, size_t length, int prot, int flags, int fd, off_t offset);
+static mmap_t m_mmap_real = NULL;
+
+typedef int (*munmap_t)(void *addr, size_t length);
+static munmap_t m_munmap_real = NULL;
+
 static void _heap_info_log_line(const char *line)
 {
     int fd = open("/tmp/heapinfo.txt", O_RDWR|O_APPEND|O_CREAT, 0644);
@@ -55,6 +61,8 @@ static void _load_real_symbols(void)
     LOAD_SYM(m_calloc_real, calloc_t, "calloc");
     LOAD_SYM(m_realloc_real, realloc_t, "realloc");
     LOAD_SYM(m_free_real, free_t, "free");
+    LOAD_SYM(m_mmap_real, mmap_t, "mmap");
+    LOAD_SYM(m_munmap_real, munmap_t, "munmap");
 }
 
 void __attribute__((constructor)) init(void)
@@ -69,9 +77,8 @@ void *malloc(size_t size)
     char buf[LOG_BUF_SZ];
     char *ptr = m_malloc_real(size);
     int n = snprintf(buf, sizeof(buf), "%s,%p,%ld\n", __func__, ptr, size);
-    if ((unsigned)n >= sizeof(buf)) {
+    if ((unsigned)n >= sizeof(buf))
         return ptr; // truncated
-    }
 
     _heap_info_log_line(buf);
     return ptr;
@@ -89,9 +96,8 @@ void *calloc(size_t num, size_t size)
 
     char buf[LOG_BUF_SZ];
     int n = snprintf(buf, sizeof(buf), "%s,%p,%ld\n", __func__, ptr, size*num);
-    if ((unsigned)n >= sizeof(buf)) {
+    if ((unsigned)n >= sizeof(buf))
         return ptr; // truncated
-    }
 
     _heap_info_log_line(buf);
     return ptr;
@@ -104,9 +110,8 @@ void *realloc(void *ptr, size_t new_size)
 
     char buf[LOG_BUF_SZ];
     int n = snprintf(buf, sizeof(buf), "%s,%p,%ld\n", __func__, newptr, new_size);
-    if ((unsigned)n >= sizeof(buf)) {
+    if ((unsigned)n >= sizeof(buf))
         return newptr; // truncated
-    }
 
     return newptr;
 }
@@ -121,8 +126,36 @@ void free(void *ptr)
 
     char buf[LOG_BUF_SZ];
     int n = snprintf(buf, sizeof(buf), "%s,%p,\n", __func__, ptr);
-    if ((unsigned)n >= sizeof(buf)) {
+    if ((unsigned)n >= sizeof(buf))
         return; // truncated
-    }
+
     _heap_info_log_line(buf);
+}
+
+void *mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset)
+{
+    _load_real_symbols();
+    void *ptr = m_mmap_real(addr, length, prot, flags, fd, offset);
+
+    char buf[LOG_BUF_SZ];
+    int n = snprintf(buf, sizeof(buf), "%s,%p,%ld\n", __func__, ptr, length);
+    if ((unsigned)n >= sizeof(buf))
+        return ptr; // truncated
+
+    _heap_info_log_line(buf);
+    return ptr;
+}
+
+int munmap(void *addr, size_t length)
+{
+    _load_real_symbols();
+    int rc = m_munmap_real(addr, length);
+
+    char buf[LOG_BUF_SZ];
+    int n = snprintf(buf, sizeof(buf), "%s,%p,%ld\n", __func__, addr, length);
+    if ((unsigned)n >= sizeof(buf))
+        return rc; // truncated
+
+    _heap_info_log_line(buf);
+    return rc;
 }
