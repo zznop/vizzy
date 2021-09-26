@@ -7,6 +7,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <asm/unistd.h>
+#include <sys/time.h>
 
 #define TMP_BUFFER_SZ 8192
 #define LOG_BUF_SZ 256
@@ -36,13 +37,21 @@ static munmap_t m_munmap_real = NULL;
 
 static void _heap_info_log_line(const char *line)
 {
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+
+    char buf[LOG_BUF_SZ];
+    int n = snprintf(buf, sizeof(buf), "%ld,%ld,%s\n", tv.tv_sec, tv.tv_usec, line);
+    if ((unsigned)n >= sizeof(buf))
+        return; // truncated
+
     int fd = open("/tmp/heapinfo.txt", O_RDWR|O_APPEND|O_CREAT, 0644);
     if (!fd)
         return;
 
-    int size = strlen(line);
+    int size = strlen(buf);
     for (int total = 0; total < size;) {
-        int n = write(fd, line, size);
+        int n = write(fd, buf, size);
         total += n;
     }
 
@@ -76,7 +85,7 @@ void *malloc(size_t size)
 
     char buf[LOG_BUF_SZ];
     char *ptr = m_malloc_real(size);
-    int n = snprintf(buf, sizeof(buf), "%s,%p,%ld\n", __func__, ptr, size);
+    int n = snprintf(buf, sizeof(buf), "%s,%p,%ld", __func__, ptr, size);
     if ((unsigned)n >= sizeof(buf))
         return ptr; // truncated
 
@@ -95,7 +104,7 @@ void *calloc(size_t num, size_t size)
     void * ptr = m_calloc_real(num, size);
 
     char buf[LOG_BUF_SZ];
-    int n = snprintf(buf, sizeof(buf), "%s,%p,%ld\n", __func__, ptr, size*num);
+    int n = snprintf(buf, sizeof(buf), "%s,%p,%ld", __func__, ptr, size*num);
     if ((unsigned)n >= sizeof(buf))
         return ptr; // truncated
 
@@ -109,7 +118,7 @@ void *realloc(void *ptr, size_t new_size)
     void *newptr = m_realloc_real(ptr, new_size);
 
     char buf[LOG_BUF_SZ];
-    int n = snprintf(buf, sizeof(buf), "%s,%p,%ld\n", __func__, newptr, new_size);
+    int n = snprintf(buf, sizeof(buf), "%s,%p,%ld", __func__, newptr, new_size);
     if ((unsigned)n >= sizeof(buf))
         return newptr; // truncated
 
@@ -125,7 +134,7 @@ void free(void *ptr)
     m_free_real(ptr);
 
     char buf[LOG_BUF_SZ];
-    int n = snprintf(buf, sizeof(buf), "%s,%p,\n", __func__, ptr);
+    int n = snprintf(buf, sizeof(buf), "%s,%p,", __func__, ptr);
     if ((unsigned)n >= sizeof(buf))
         return; // truncated
 
@@ -138,7 +147,7 @@ void *mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset)
     void *ptr = m_mmap_real(addr, length, prot, flags, fd, offset);
 
     char buf[LOG_BUF_SZ];
-    int n = snprintf(buf, sizeof(buf), "%s,%p,%ld\n", __func__, ptr, length);
+    int n = snprintf(buf, sizeof(buf), "%s,%p,%ld", __func__, ptr, length);
     if ((unsigned)n >= sizeof(buf))
         return ptr; // truncated
 
@@ -152,7 +161,7 @@ int munmap(void *addr, size_t length)
     int rc = m_munmap_real(addr, length);
 
     char buf[LOG_BUF_SZ];
-    int n = snprintf(buf, sizeof(buf), "%s,%p,%ld\n", __func__, addr, length);
+    int n = snprintf(buf, sizeof(buf), "%s,%p,%ld", __func__, addr, length);
     if ((unsigned)n >= sizeof(buf))
         return rc; // truncated
 

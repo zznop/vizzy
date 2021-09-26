@@ -15,11 +15,12 @@ env.Depends(incbin_o, libvizzy)
 
 sources = [
     'src/main.c',
+    'src/log.c',
     incbin_o,
 ]
 
 vizzy = env.Program(
-    'vizzy',
+    'vizzytrace',
     source = sources,
 )
 

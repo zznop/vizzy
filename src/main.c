@@ -6,6 +6,7 @@
 #include <stdbool.h>
 #include <spawn.h>
 #include <sys/wait.h>
+#include "log.h"
 
 #define VIZZY_SO_PATH "/tmp/libvizzy.so"
 #define PRELOAD_ENV_SZ 256
@@ -14,6 +15,16 @@ extern char **environ;
 extern uint8_t g_libvizzy[0];
 extern int g_libvizzy_size;
 
+static void _print_banner(void)
+{
+    printf(
+        "\n _  _  ____  ____  ____  _  _\n"
+        "( \\/ )(_  _)(_   )(_   )( \\/ )\n"
+        " \\  /  _)(_  / /_  / /_  \\  /\n"
+        "  \\/  (____)(____)(____) (__)\n\n"
+    );
+}
+
 static void _print_usage(char *name)
 {
     printf("%s <command>\n", name);
@@ -21,15 +32,16 @@ static void _print_usage(char *name)
 
 static bool _drop_vizzy_so(void)
 {
+    info("Dropping libvizzy to disk at %s", VIZZY_SO_PATH);
     FILE *f = fopen(VIZZY_SO_PATH, "wb");
     if (!f) {
-        fprintf(stderr, "Failed to open vizzy shared object\n");
+        err("Failed to open vizzy shared object");
         return false;
     }
 
     int n = fwrite(g_libvizzy, g_libvizzy_size, 1, f);
     if (n != 1)
-        fprintf(stderr, "Failed to write vizzy shared object\n");
+        err("Failed to write vizzy shared object");
 
     fclose(f);
     return n == 1;
@@ -40,7 +52,7 @@ static bool _spawn_process(char **argv, pid_t *pid)
     char preload_env[PRELOAD_ENV_SZ] = {0};
     int n = snprintf(preload_env, sizeof(preload_env), "LD_PRELOAD=%s", VIZZY_SO_PATH);
     if ((unsigned)n >= sizeof(preload_env)) {
-        fprintf(stderr, "LD_PRELOAD environment variable truncated!?\n");
+        err("LD_PRELOAD environment variable truncated!?");
         return false;
     }
 
@@ -58,7 +70,7 @@ static bool _spawn_process(char **argv, pid_t *pid)
     // Attempt to spawn the command as a child process
     int rc = posix_spawn(pid, argv[0], NULL, NULL, argv, newenv);
     if (rc != 0)
-        fprintf(stderr, "Failed to spawn the target process\n");
+        err("Failed to spawn the target process");
 
     free(newenv);
     return rc == 0;
@@ -71,6 +83,7 @@ int main(int argc, char **argv)
         return 1;
     }
 
+    _print_banner();
     bool rv = _drop_vizzy_so();
     if (!rv)
         return 1;
@@ -80,14 +93,14 @@ int main(int argc, char **argv)
     if (!rv)
         return 1;
 
-    printf("Target process started (pid=%i)\n", pid);
+    info("Child process started (pid=%i)", pid);
     int status;
     if (waitpid(pid, &status, 0) == -1)
-        fprintf(stderr, "Error while waiting on target process\n");
+        err("Error while waiting on target process\n");
 
     if (WIFEXITED(status))
-        printf("Target process exited with a return code of %i\n", WEXITSTATUS(status));
+        info("Child process exited with a return code of %i", WEXITSTATUS(status));
 
     if (WIFSIGNALED(status))
-        printf("Target process exited via signal %i\n", WTERMSIG(status));
+        info("Child process exited via signal %i", WTERMSIG(status));
 }
