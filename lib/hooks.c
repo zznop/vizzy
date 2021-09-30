@@ -35,6 +35,15 @@ static mmap_t m_mmap_real = NULL;
 typedef int (*munmap_t)(void *addr, size_t length);
 static munmap_t m_munmap_real = NULL;
 
+typedef int (*posix_memalign_t)(void **memptr, size_t alignment, size_t size);
+static posix_memalign_t m_posix_memalign_real = NULL;
+
+typedef void *(*aligned_alloc_t)(size_t alignment, size_t size);
+static aligned_alloc_t m_aligned_alloc_real = NULL;
+
+typedef void *(*valloc_t)(size_t size);
+static valloc_t m_valloc_real = NULL;
+
 static void _heap_info_log_line(const char *line)
 {
     struct timeval tv;
@@ -72,6 +81,9 @@ static void _load_real_symbols(void)
     LOAD_SYM(m_free_real, free_t, "free");
     LOAD_SYM(m_mmap_real, mmap_t, "mmap");
     LOAD_SYM(m_munmap_real, munmap_t, "munmap");
+    LOAD_SYM(m_posix_memalign_real, posix_memalign_t, "posix_memalign");
+    LOAD_SYM(m_aligned_alloc_real, aligned_alloc_t, "aligned_alloc");
+    LOAD_SYM(m_valloc_real, valloc_t, "valloc");
 }
 
 void __attribute__((constructor)) init(void)
@@ -167,4 +179,46 @@ int munmap(void *addr, size_t length)
 
     _heap_info_log_line(buf);
     return rc;
+}
+
+int posix_memalign(void **memptr, size_t alignment, size_t size)
+{
+    _load_real_symbols();
+    int rc = m_posix_memalign_real(memptr, alignment, size);
+
+    char buf[LOG_BUF_SZ];
+    int n = snprintf(buf, sizeof(buf), "%s,%p,%ld", __func__, *memptr, size);
+    if ((unsigned)n >= sizeof(buf))
+        return rc; // truncated
+
+    _heap_info_log_line(buf);
+    return rc;
+}
+
+void *aligned_alloc(size_t alignment, size_t size)
+{
+    _load_real_symbols();
+    void *ptr = m_aligned_alloc_real(alignment, size);
+
+    char buf[LOG_BUF_SZ];
+    int n = snprintf(buf, sizeof(buf), "%s,%p,%ld", __func__, ptr, size);
+    if ((unsigned)n >= sizeof(buf))
+        return ptr; // truncated
+
+    _heap_info_log_line(buf);
+    return ptr;
+}
+
+void *valloc(size_t size)
+{
+    _load_real_symbols();
+    void *ptr = m_valloc_real(size);
+
+    char buf[LOG_BUF_SZ];
+    int n = snprintf(buf, sizeof(buf), "%s,%p,%ld", __func__, ptr, size);
+    if ((unsigned)n >= sizeof(buf))
+        return ptr; // truncated
+
+    _heap_info_log_line(buf);
+    return ptr;
 }
