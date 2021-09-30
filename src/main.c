@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -6,7 +7,9 @@
 #include <stdbool.h>
 #include <spawn.h>
 #include <sys/wait.h>
+#include <limits.h>
 #include "log.h"
+#include "hooks.h"
 
 #define VIZZY_SO_PATH "/tmp/libvizzy.so"
 #define PRELOAD_ENV_SZ 256
@@ -27,12 +30,21 @@ static void _print_banner(void)
 
 static void _print_usage(char *name)
 {
-    printf("%s <command>\n", name);
+    printf("%s <log> <command>\n", name);
 }
 
-static bool _drop_vizzy_so(void)
+static bool _drop_vizzy_so(char *filepath)
 {
     info("Dropping libvizzy to disk at %s", VIZZY_SO_PATH);
+
+    char tag[] = FILENAME_TAG;
+    char *ptr = memmem(g_libvizzy, g_libvizzy_size, tag, FILENAME_TAG_SIZE);
+    if (!ptr) {
+        err("Failed to fixup libvizzy log file path\n");
+        return false;
+    }
+    strncpy(ptr+FILENAME_TAG_SIZE, filepath, PATH_MAX);
+
     FILE *f = fopen(VIZZY_SO_PATH, "wb");
     if (!f) {
         err("Failed to open vizzy shared object");
@@ -78,18 +90,18 @@ static bool _spawn_process(char **argv, pid_t *pid)
 
 int main(int argc, char **argv)
 {
-    if (argc < 2) {
+    if (argc < 3) {
         _print_usage(argv[0]);
         return 1;
     }
 
     _print_banner();
-    bool rv = _drop_vizzy_so();
+    bool rv = _drop_vizzy_so(argv[1]);
     if (!rv)
         return 1;
 
     pid_t pid;
-    rv = _spawn_process(&argv[1], &pid);
+    rv = _spawn_process(&argv[2], &pid);
     if (!rv)
         return 1;
 

@@ -1,3 +1,5 @@
+.section .data
+
 .globl g_libvizzy
 .globl g_libvizzy_size
 

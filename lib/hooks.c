@@ -8,6 +8,8 @@
 #include <unistd.h>
 #include <asm/unistd.h>
 #include <sys/time.h>
+#include <limits.h>
+#include "hooks.h"
 
 #define TMP_BUFFER_SZ 8192
 #define LOG_BUF_SZ 256
@@ -16,6 +18,13 @@
         sym = (type)dlsym(RTLD_NEXT, name); \
     }                                       \
 }
+
+struct tagged_filename {
+    uint8_t tag[16];
+    char filepath[PATH_MAX];
+};
+
+static struct tagged_filename m_tagged_filename = {.tag = FILENAME_TAG, .filepath = {0}};
 
 typedef void *(*malloc_t)(size_t size);
 static malloc_t m_malloc_real = NULL;
@@ -54,7 +63,7 @@ static void _heap_info_log_line(const char *line)
     if ((unsigned)n >= sizeof(buf))
         return; // truncated
 
-    int fd = open("/tmp/heapinfo.txt", O_RDWR|O_APPEND|O_CREAT, 0644);
+    int fd = open(m_tagged_filename.filepath, O_RDWR|O_APPEND|O_CREAT, 0644);
     if (!fd)
         return;
 

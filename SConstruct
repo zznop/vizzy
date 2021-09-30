@@ -9,6 +9,7 @@ env = Environment(
         '-std=c99',
         '-O2',
     ],
+    CPPPATH=['lib'],
 )
 
 env.SConscript(
