@@ -53,6 +53,9 @@ static aligned_alloc_t m_aligned_alloc_real = NULL;
 typedef void *(*valloc_t)(size_t size);
 static valloc_t m_valloc_real = NULL;
 
+typedef char *(*strdup_t)(const char *s);
+static strdup_t m_strdup_real = NULL;
+
 static void _heap_info_log_line(const char *line)
 {
     struct timeval tv;
@@ -93,6 +96,7 @@ static void _load_real_symbols(void)
     LOAD_SYM(m_posix_memalign_real, posix_memalign_t, "posix_memalign");
     LOAD_SYM(m_aligned_alloc_real, aligned_alloc_t, "aligned_alloc");
     LOAD_SYM(m_valloc_real, valloc_t, "valloc");
+    LOAD_SYM(m_strdup_real, strdup_t, "strdup");
 }
 
 void __attribute__((constructor)) init(void)
@@ -225,6 +229,20 @@ void *valloc(size_t size)
 
     char buf[LOG_BUF_SZ];
     int n = snprintf(buf, sizeof(buf), "%s,%p,%ld", __func__, ptr, size);
+    if ((unsigned)n >= sizeof(buf))
+        return ptr; // truncated
+
+    _heap_info_log_line(buf);
+    return ptr;
+}
+
+char *strdup(const char *s)
+{
+    _load_real_symbols();
+    char *ptr = m_strdup_real(s);
+
+    char buf[LOG_BUF_SZ];
+    int n = snprintf(buf, sizeof(buf), "%s,%p,%ld", __func__, ptr, strlen(s)+1);
     if ((unsigned)n >= sizeof(buf))
         return ptr; // truncated
 
