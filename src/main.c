@@ -8,6 +8,7 @@
 #include <spawn.h>
 #include <sys/wait.h>
 #include <limits.h>
+#include <unistd.h>
 #include "log.h"
 #include "hooks.h"
 
@@ -17,6 +18,7 @@
 extern char **environ;
 extern uint8_t g_libvizzy[0];
 extern int g_libvizzy_size;
+extern const char *program_invocation_short_name;
 
 static void _print_banner(void)
 {
@@ -28,9 +30,18 @@ static void _print_banner(void)
     );
 }
 
-static void _print_usage(char *name)
+static void _print_usage(void)
 {
-    printf("%s <log> <command>\n", name);
+    printf(
+        "%s <log> <command>\n\n"
+
+        "Required:\n"
+        "  log        Path to output trace log\n"
+        "  command    Command to execute (specify the full path to the executable)\n\n"
+
+        "Example:\n"
+        "  vizzy /tmp/heaptrace.csv /bin/find . -name vizzy\n", program_invocation_short_name
+    );
 }
 
 static bool _drop_vizzy_so(char *filepath)
@@ -68,34 +79,29 @@ static bool _spawn_process(char **argv, pid_t *pid)
         return false;
     }
 
-    // Count environment variables from our environment
-    size_t i = 0;
-    while (environ[i] != NULL)
-        i++;
+    int rc = setenv("LD_PRELOAD", VIZZY_SO_PATH, 1);
+    if (rc) {
+        err("Failed to set LD_PRELOAD");
+        return false;
+    }
 
-    // Create new environment with our variables and the added LD_PRELOAD variable
-    char **newenv = malloc((i+2)*sizeof(*environ));
-    memcpy(newenv, environ, i*sizeof(*environ));
-    newenv[i] = preload_env;
-    newenv[i+1] = NULL;
-
-    // Attempt to spawn the command as a child process
-    int rc = posix_spawn(pid, argv[0], NULL, NULL, argv, newenv);
+    rc = posix_spawn(pid, argv[0], NULL, NULL, argv, environ);
     if (rc != 0)
         err("Failed to spawn the target process");
 
-    free(newenv);
     return rc == 0;
 }
 
 int main(int argc, char **argv)
 {
     if (argc < 3) {
-        _print_usage(argv[0]);
+        _print_usage();
         return 1;
     }
 
     _print_banner();
+
+    unlink(argv[1]);
     bool rv = _drop_vizzy_so(argv[1]);
     if (!rv)
         return 1;
