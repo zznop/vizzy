@@ -105,11 +105,13 @@ void __attribute__((constructor)) init(void)
 void *malloc(size_t size)
 {
     _load_real_symbols();
-
-    char buf[LOG_BUF_SZ];
     char *ptr = m_malloc_real(size);
-    snprintf(buf, sizeof(buf), "%s,%p,%ld", __func__, ptr, size);
-    _heap_info_log_line(buf);
+    if (ptr) {
+        char buf[LOG_BUF_SZ];
+        snprintf(buf, sizeof(buf), "%s,%p,%ld", __func__, ptr, size);
+        _heap_info_log_line(buf);
+    }
+
     return ptr;
 }
 
@@ -123,25 +125,30 @@ void *calloc(size_t num, size_t size)
     _load_real_symbols();
     void * ptr = m_calloc_real(num, size);
 
-    char buf[LOG_BUF_SZ];
-    snprintf(buf, sizeof(buf), "%s,%p,%ld", __func__, ptr, size*num);
-    _heap_info_log_line(buf);
+    if (ptr) {
+        char buf[LOG_BUF_SZ];
+        snprintf(buf, sizeof(buf), "%s,%p,%ld", __func__, ptr, size*num);
+        _heap_info_log_line(buf);
+    }
+
     return ptr;
 }
 
 void *realloc(void *ptr, size_t new_size)
 {
-    _load_real_symbols();
     char buf[LOG_BUF_SZ];
-
+    _load_real_symbols();
     if (ptr != NULL) {
         snprintf(buf, sizeof(buf), "free,%p,", ptr);
         _heap_info_log_line(buf);
     }
 
     void *newptr = m_realloc_real(ptr, new_size);
-    snprintf(buf, sizeof(buf), "%s,%p,%ld", __func__, newptr, new_size);
-    _heap_info_log_line(buf);
+    if (newptr) {
+        snprintf(buf, sizeof(buf), "%s,%p,%ld", __func__, newptr, new_size);
+        _heap_info_log_line(buf);
+    }
+
     return newptr;
 }
 
@@ -152,7 +159,6 @@ void free(void *ptr)
         return;
 
     m_free_real(ptr);
-
     char buf[LOG_BUF_SZ];
     snprintf(buf, sizeof(buf), "%s,%p,", __func__, ptr);
     _heap_info_log_line(buf);
@@ -162,10 +168,12 @@ void *mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset)
 {
     _load_real_symbols();
     void *ptr = m_mmap_real(addr, length, prot, flags, fd, offset);
+    if (ptr) {
+        char buf[LOG_BUF_SZ];
+        snprintf(buf, sizeof(buf), "%s,%p,%ld", __func__, ptr, length);
+        _heap_info_log_line(buf);
+    }
 
-    char buf[LOG_BUF_SZ];
-    snprintf(buf, sizeof(buf), "%s,%p,%ld", __func__, ptr, length);
-    _heap_info_log_line(buf);
     return ptr;
 }
 
@@ -173,10 +181,10 @@ int munmap(void *addr, size_t length)
 {
     _load_real_symbols();
     int rc = m_munmap_real(addr, length);
-
     char buf[LOG_BUF_SZ];
     snprintf(buf, sizeof(buf), "%s,%p,%ld", __func__, addr, length);
     _heap_info_log_line(buf);
+
     return rc;
 }
 
@@ -184,10 +192,12 @@ int posix_memalign(void **memptr, size_t alignment, size_t size)
 {
     _load_real_symbols();
     int rc = m_posix_memalign_real(memptr, alignment, size);
+    if (!rc) {
+        char buf[LOG_BUF_SZ];
+        snprintf(buf, sizeof(buf), "%s,%p,%ld", __func__, *memptr, size);
+        _heap_info_log_line(buf);
+    }
 
-    char buf[LOG_BUF_SZ];
-    snprintf(buf, sizeof(buf), "%s,%p,%ld", __func__, *memptr, size);
-    _heap_info_log_line(buf);
     return rc;
 }
 
@@ -195,10 +205,12 @@ void *aligned_alloc(size_t alignment, size_t size)
 {
     _load_real_symbols();
     void *ptr = m_aligned_alloc_real(alignment, size);
+    if (ptr) {
+        char buf[LOG_BUF_SZ];
+        snprintf(buf, sizeof(buf), "%s,%p,%ld", __func__, ptr, size);
+        _heap_info_log_line(buf);
+    }
 
-    char buf[LOG_BUF_SZ];
-    snprintf(buf, sizeof(buf), "%s,%p,%ld", __func__, ptr, size);
-    _heap_info_log_line(buf);
     return ptr;
 }
 
@@ -206,10 +218,12 @@ void *valloc(size_t size)
 {
     _load_real_symbols();
     void *ptr = m_valloc_real(size);
+    if (ptr) {
+        char buf[LOG_BUF_SZ];
+        snprintf(buf, sizeof(buf), "%s,%p,%ld", __func__, ptr, size);
+        _heap_info_log_line(buf);
+    }
 
-    char buf[LOG_BUF_SZ];
-    snprintf(buf, sizeof(buf), "%s,%p,%ld", __func__, ptr, size);
-    _heap_info_log_line(buf);
     return ptr;
 }
 
@@ -217,9 +231,11 @@ char *strdup(const char *s)
 {
     _load_real_symbols();
     char *ptr = m_strdup_real(s);
+    if (ptr) {
+        char buf[LOG_BUF_SZ];
+        snprintf(buf, sizeof(buf), "%s,%p,%ld", __func__, ptr, strlen(s)+1);
+        _heap_info_log_line(buf);
+    }
 
-    char buf[LOG_BUF_SZ];
-    snprintf(buf, sizeof(buf), "%s,%p,%ld", __func__, ptr, strlen(s)+1);
-    _heap_info_log_line(buf);
     return ptr;
 }
