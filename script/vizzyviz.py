@@ -1,7 +1,9 @@
 import argparse
 import csv
-from bokeh.plotting import figure, show
 from collections import OrderedDict
+from bokeh.plotting import figure, show
+
+TOOLS = "pan,wheel_zoom,box_zoom,reset,save"
 
 def heap_summary(dataset):
     allocnum = 0
@@ -15,12 +17,10 @@ def heap_summary(dataset):
                 del allocs[data['address']]
             else:
                 print('Double free @ {:08x}?'.format(data['address']))
-            continue
-
-        # Allocation
-        allocnum += 1
-        total_bytes_allocated += data['size']
-        allocs[data['address']] = data['size']
+        else:
+            allocnum += 1
+            total_bytes_allocated += data['size']
+            allocs[data['address']] = data['size']
 
     # Compute blocks in use at exit
     in_use_bytes = 0
@@ -34,6 +34,33 @@ def heap_summary(dataset):
     total heap usage : {} allocs, {} frees, {} bytes allocated'''.format(
         in_use_bytes, in_use_blocks, allocnum, freenum, total_bytes_allocated)
     )
+
+def user_address_range():
+    user_range = []
+    for i in range(0, 0x800000000000, 0x20000000000):
+        user_range.append(i)
+
+    return user_range
+
+def viz_heap_usage_over_time(dataset):
+    curr_allocs = OrderedDict()
+    curr_memusage = 0
+    times = []
+    memusage = []
+    for time, data in dataset.items():
+        if data['function'] == 'free':
+            if data['address'] in curr_allocs:
+                curr_memusage -= curr_allocs[data['address']]
+                del curr_allocs[data['address']]
+        else:
+            curr_allocs[data['address']] = data['size']
+            curr_memusage += data['size']
+
+        times.append(time)
+        memusage.append(curr_memusage/1024.0)
+    p = figure(title="Memory Usage over Time", x_axis_label='Time (seconds)', y_axis_label='Memory (kB)', tools=TOOLS)
+    p.line(times, memusage, line_width=0.5)
+    show(p)
 
 def parse_vizzy_file(tracefile):
     """Iterate through CSV rows
@@ -88,6 +115,7 @@ def main():
     args = parse_args()
     dataset = parse_vizzy_file(args.tracefile)
     heap_summary(dataset)
+    viz_heap_usage_over_time(dataset)
 
 if __name__ == '__main__':
     main()
