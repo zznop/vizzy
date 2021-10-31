@@ -23,7 +23,7 @@ HEAP SUMMARY:
 **Vizzy is a suite of dynamic analysis tools for profiling heap usage and memory management.** Vizzy consists of a
 tracer application (`vizzytrace`) that injects (`LD_PRELOAD`'s) a shared object into a process to hook libc allocation
 and free APIs. These hooks log timestamped information on each allocation and free to a trace file for post-processing.
-Vizzy contains a script (`vizzyreport.py`) that can processes vizzy trace files to generate reports and visualizations.
+Vizzy contains a script (`vizzyreport.py`) that processes vizzy trace files to generate reports and visualizations.
 
 ## Usage
 
@@ -64,6 +64,7 @@ optional arguments:
 ```
 
 **Example Visualization:**
+
 ![Alt text](screens/memusage.png "Vizzy Plot")
 
 # Build
