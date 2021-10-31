@@ -25,8 +25,45 @@ tracer application (`vizzytrace`) that injects (`LD_PRELOAD`'s) a shared object 
 and free APIs. These hooks log timestamped information on each allocation and free to a trace file for post-processing.
 Vizzy contains a script (`vizzyreport.py`) that can processes vizzy trace files to generate reports and visualizations.
 
-## Sample Visualizations
+## Usage
 
+### vizzytrace
+
+```
+vizzytrace <log> <command>
+
+Required:
+  log        Path to output trace log
+  command    Command to execute (specify the full path to the executable)
+
+Example:
+  vizzy /tmp/heaptrace.csv /bin/find . -name vizzy
+```
+
+To run a process under `vizzytrace` first supply the path to where the trace log should be written to, then supply
+the command line starting with the full path to the tracee executable. `vizzytrace` will take the following steps:
+1. Patch `libvizzy`'s config section with the file path for where it should write the trace file
+2. Drop `libvizzy` to `/tmp`
+3. Spawn the tracee executable as a child process and preload the `libvizzy` shared object
+4. Wait on the child process to exit
+
+### vizzyreport.py
+
+```
+usage: vizzyreport.py [-h] [--heap-layout-time HEAP_LAYOUT_TIME] [--mem-usage]
+                      tracefile
+
+positional arguments:
+  tracefile             File path to vizzy heap trace file
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --heap-layout-time HEAP_LAYOUT_TIME
+                        Visualize heap layout at specified time
+  --mem-usage           Visualize heap memory usage over time
+```
+
+**Example Visualization:**
 ![Alt text](screens/memusage.png "Vizzy Plot")
 
 # Build
