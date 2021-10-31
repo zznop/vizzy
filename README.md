@@ -1,4 +1,4 @@
-# vizzy
+# vizzy ![build status](https://github.com/zznop/vizzy/actions/workflows/build.yml/badge.svg)
 
 ```
 > ./build/vizzytrace /tmp/heapinfo.trace /bin/find /home/zznop -name vizzy
