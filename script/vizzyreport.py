@@ -91,6 +91,7 @@ def viz_heap_usage_over_time(dataset: OrderedDict):
       dataset: Ordered dictionary containing data parsed from vizzy trace file
     """
 
+    print('* generating heap memory usage visualization...')
     curr_allocs = OrderedDict()
     curr_memusage = 0
     times = []
