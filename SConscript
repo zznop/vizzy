@@ -7,7 +7,7 @@ libvizzy_env.AppendUnique(
 )
 libvizzy = libvizzy_env.SharedLibrary(
     'libvizzy.so',
-    source=['lib/hooks.c'],
+    source=['src/lib/hooks.c'],
 )
 
 incbin_o = env.Object('src/incbin.s')

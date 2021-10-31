@@ -10,7 +10,7 @@
 #include <limits.h>
 #include <unistd.h>
 #include "log.h"
-#include "hooks.h"
+#include "lib/hooks.h"
 
 #define VIZZY_SO_PATH "/tmp/libvizzy.so"
 #define PRELOAD_ENV_SZ 256
